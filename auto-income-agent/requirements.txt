@@ -1,0 +1,6 @@
+# Dependencias del Auto-Income Agent
+# Todas las librerías son gratuitas y open source
+
+groq>=0.4.0          # API client para Qwen 2.5 Coder (Groq free tier)
+requests>=2.31.0     # HTTP requests para APIs
+python-dotenv>=1.0.0 # Gestión de variables de entorno

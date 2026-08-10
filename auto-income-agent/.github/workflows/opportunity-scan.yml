@@ -1,0 +1,36 @@
+name: 🔍 Opportunity Scan
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Cada hora
+  workflow_dispatch:      # Ejecución manual
+
+jobs:
+  scan-opportunities:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      
+      - name: Scan for opportunities
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          python core/scanner.py
+      
+      - name: Create or update issue
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "🎯 Oportunidad detectada: [NICHO]"
+          content-filepath: ./opportunity_report.md
+          labels: opportunity, needs-review

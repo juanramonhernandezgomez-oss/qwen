@@ -1,0 +1,79 @@
+name: 🤖 Code Generator (Qwen)
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  check-approval:
+    if: contains(github.event.comment.body, '/approve')
+    runs-on: ubuntu-latest
+    
+    outputs:
+      issue_number: ${{ steps.get-issue.outputs.number }}
+      niche: ${{ steps.get-issue.outputs.niche }}
+    
+    steps:
+      - name: Get issue data
+        id: get-issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            
+            // Extraer nicho del título o cuerpo
+            const niche = issue.data.title.match(/🎯 Oportunidad detectada: (.+)/)?.[1] || 'general';
+            
+            return {
+              number: context.issue.number,
+              niche: niche
+            };
+  
+  generate-code:
+    needs: check-approval
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      
+      - name: Generate code with Qwen via Groq
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          NICHE: ${{ needs.check-approval.outputs.niche }}
+          ISSUE_NUMBER: ${{ needs.check-approval.outputs.issue_number }}
+        run: |
+          python modules/web_builder.py
+      
+      - name: Commit and push generated code
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A
+          git commit -m "🤖 Generated site for niche: $NICHE [auto]"
+          git push origin main
+      
+      - name: Update issue with progress
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ needs.check-approval.outputs.issue_number }}
+          body: |
+            ✅ **Código generado exitosamente**
+            
+            📁 Archivos creados en el repositorio
+            🚀 Listo para deploy
+            
+            _Próximo paso: Deploy automático en curso..._
