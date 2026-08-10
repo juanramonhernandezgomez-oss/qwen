@@ -17,23 +17,24 @@ def main():
     repo = gh.get_repo(repo_name)
     issue = repo.get_issue(number=issue_number)
     
-    # Obtener datos del issue
-    niche = issue.title.replace("💡 Oportunidad Detectada:", "").strip()
+    # Obtener detalles del issue aprobado
+    niche = issue.title.replace("💡 Oportunidad Detectada: ", "")
     body = issue.body
     
     print(f"Generando web para: {niche}")
     
+    # Prompt para Qwen/Llama
     prompt = f"""
     Crea una Landing Page completa en UN SOLO archivo HTML (con CSS y JS incrustados) 
     para el nicho: {niche}.
     Detalles: {body}
     
     Requisitos:
-    - Diseño moderno y responsive.
-    - Secciones: Hero, Beneficios, Testimonios, FAQ, Call to Action.
-    - Espacios reservados para [AQUI_TU_ENLACE_DE_AFILIADO] y [AQUI_TU_ADSENSE].
-    - Optimizada para SEO.
-    - Devuelve SOLO el código HTML, sin markdown ni explicaciones.
+    - Diseño moderno y responsive
+    - Secciones: Hero, Beneficios, Testimonios, FAQ, Footer
+    - Botones de llamada a la acción claros
+    - Optimizado para SEO básico
+    - NO incluyas markdown, solo el código HTML puro
     """
     
     try:
@@ -44,33 +45,34 @@ def main():
             max_tokens=4000
         )
         
-        html_content = response.choices[0].message.content
+        html_code = response.choices[0].message.content
         
-        # Limpiar si la IA añade markdown
-        if "```html" in html_content:
-            html_content = html_content.split("```html")[1].split("```")[0]
-        elif "```" in html_content:
-            html_content = html_content.split("```")[1].split("```")[0]
+        # Limpiar si viene con markdown
+        if "```html" in html_code:
+            html_code = html_code.split("```html")[1].split("```")[0]
+        elif "```" in html_code:
+            html_code = html_code.split("```")[1].split("```")[0]
             
         # Guardar archivo
         os.makedirs("output_site", exist_ok=True)
         with open("output_site/index.html", "w", encoding="utf-8") as f:
-            f.write(html_content)
+            f.write(html_code)
             
-        print("✅ Sitio generado en output_site/index.html")
+        print("✅ Sitio generado exitosamente.")
         
-        # Commit y Push a rama gh-pages
-        import subprocess
-        subprocess.run(["git", "config", "--global", "user.name", "github-actions[bot]"])
-        subprocess.run(["git", "config", "--global", "user.email", "github-actions[bot]@users.noreply.github.com"])
-        subprocess.run(["git", "add", "output_site/"])
-        subprocess.run(["git", "commit", "-m", f"Deploy site for {niche}"])
-        subprocess.run(["git", "push", "origin", "HEAD:gh-pages", "--force"])
+        # Commit y Push automático a rama gh-pages
+        os.system("git config --global user.name 'github-actions[bot]'")
+        os.system("git config --global user.email 'github-actions[bot]@users.noreply.github.com'")
+        os.system("git add output_site/")
+        os.system("git commit -m 'Deploy: Web generada para " + niche + "' || echo 'No changes'")
+        os.system("git push origin HEAD:gh-pages --force")
         
-        issue.create_comment(f"✅ **Web generada y desplegada!**\n\nPuedes verla aquí: https://{repo_name.split('/')[0]}.github.io/{repo_name.split('/')[1]}/")
+        # Comentar en el issue
+        issue.create_comment("✅ **¡Web generada y desplegada!**\n\nPuedes verla aquí: https://" + repo.owner.login + ".github.io/" + repo.name + "/")
         
     except Exception as e:
         print(f"❌ Error: {str(e)}")
+        issue.create_comment(f"❌ Error generando la web: {str(e)}")
         raise e
 
 if __name__ == "__main__":
